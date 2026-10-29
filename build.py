@@ -27,6 +27,11 @@ MAIN_CAL = "kuromaku.contact@gmail.com"
 EVENT_CAL = "f710c5a8ee32f4a8e84100c1f854bf6fa654348ec429504352a7a502b22b2ff3@group.calendar.google.com"
 CONSUL = {"あっきー": "akky", "あんにん": "annin", "みしゃまる": "misha", "そら": "sora"}
 JST = datetime.timezone(datetime.timedelta(hours=9))
+# 場所欄にこれが入っていたらオンライン会議の情報とみなして載せない
+PRIVATE_PLACE = re.compile(
+    r"https?://|zoom|meet\.google\.com|teams\.microsoft\.com|\.com/|パスコード|passcode|ミーティングID|meeting id",
+    re.I,
+)
 HERE = Path(__file__).parent
 
 
@@ -51,9 +56,9 @@ def to_item(e, cat):
         "start": start.get("dateTime", start.get("date"))[:16],
         "end": end.get("dateTime", end.get("date"))[:16],
     }
-    # 場所はURL(Zoomなど)が入っていない時だけ出す
+    # 場所はURLや会議のパスコードっぽいものが入っていない時だけ出す
     place = e.get("location", "")
-    if place and not re.search(r"https?://|zoom", place, re.I):
+    if place and not PRIVATE_PLACE.search(place):
         item["place"] = html.escape(place)
     return item
 
