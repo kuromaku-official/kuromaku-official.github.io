@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KUROMAKU イベントカレンダー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Shippori+Mincho:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f4ee; --card:#fffefa; --ink:#1d2140; --sub:#6b6f85; --line:#e4e1d6; --today:#1d2140;
+  --akky:#ff914d; --annin:#f27a96; --misha:#e0344f; --sora:#8c52ff; --offkai:#3b3f5c; --study:#1f9e8f;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15172a; --card:#1e2138; --ink:#eceaf5; --sub:#a3a6bf; --line:#2f3352; --today:#eceaf5;
+    --offkai:#b9bcd8; --study:#3cc4b3;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15172a; --card:#1e2138; --ink:#eceaf5; --sub:#a3a6bf; --line:#2f3352; --today:#eceaf5;
+  --offkai:#b9bcd8; --study:#3cc4b3;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Maru Gothic",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:920px;margin:0 auto;padding:24px 16px 48px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:18px}
+.brand{font-family:"Shippori Mincho",serif;letter-spacing:.12em;font-size:13px;color:var(--sub)}
+h1{margin:4px 0 0;white-space:nowrap;font-size:26px;font-weight:700;letter-spacing:.04em}
+.updated{font-size:12px;color:var(--sub);white-space:nowrap}
+
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);color:var(--ink);
+  border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.chip[aria-pressed="false"]{opacity:.4}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+
+.tabs{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:3px;margin-bottom:16px}
+.tabs button{white-space:nowrap;border:0;background:none;font:inherit;font-size:14px;color:var(--sub);padding:7px 16px;border-radius:9px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+
+/* list */
+.day{display:grid;grid-template-columns:64px 1fr;gap:12px;padding:14px 0;border-top:1px solid var(--line)}
+.day:first-child{border-top:0}
+.date{text-align:center;line-height:1.1}
+.date .md{font-size:22px;font-weight:700}
+.date .wd{font-size:12px;color:var(--sub);margin-top:4px}
+.date.sun .wd{color:#d9506a}.date.sat .wd{color:#4f7bd9}
+.badge-today{display:inline-block;font-size:10px;background:var(--today);color:var(--bg);border-radius:4px;padding:1px 5px;margin-top:4px}
+.ev{display:block;background:var(--card);border:1px solid var(--line);border-left:5px solid var(--c);
+  border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.ev:last-child{margin-bottom:0}
+.ev .time{display:block;font-variant-numeric:tabular-nums;font-size:13px;color:var(--sub);margin-bottom:2px}
+.ev .name{font-size:15px;font-weight:700}
+.ev .place{font-size:12px;color:var(--sub)}
+.month-label{font-family:"Shippori Mincho",serif;font-size:18px;margin:26px 0 4px;letter-spacing:.06em}
+.month-label:first-child{margin-top:0}
+
+/* grid */
+.mhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.mhead h2{font-family:"Shippori Mincho",serif;font-size:24px;margin:0}
+.mhead button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;width:36px;height:36px;font-size:16px;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.grid .wh{font-size:11px;text-align:center;padding:8px 0;color:var(--sub);border-bottom:1px solid var(--line)}
+.grid .wh:first-child{color:#d9506a}.grid .wh:nth-child(7){color:#4f7bd9}
+.cell{min-height:92px;padding:6px 5px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);min-width:0}
+.cell:nth-child(7n){border-right:0}
+.cell.out{background:transparent;opacity:.35}
+.cell .n{font-size:12px;font-weight:700;margin-bottom:4px}
+.cell.today .n{display:inline-block;background:var(--today);color:var(--bg);border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px}
+.pill{display:flex;align-items:center;gap:3px;font-size:11px;line-height:1.3;margin-bottom:3px;color:var(--ink);white-space:nowrap;overflow:hidden}
+.pill .dot{width:7px;height:7px}
+.pill b{font-weight:500;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:560px){
+  .cell{min-height:64px;padding:4px 3px}
+  .pill b{display:none}
+  .pill{font-size:10px}
+  h1{font-size:22px}
+  .chip{font-size:12px;padding:5px 10px}
+  .ev .name{font-size:14px}
+  header{flex-wrap:wrap}
+  .day{grid-template-columns:48px 1fr}
+  .legend{gap:6px}
+}
+.empty{color:var(--sub);text-align:center;padding:40px 0}
+footer{margin-top:28px;font-size:12px;color:var(--sub);text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="brand">KUROMAKU</div>
+      <h1>イベントカレンダー</h1>
+    </div>
+    <div class="updated" id="updated"></div>
+  </header>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-view="list">これからの予定</button>
+    <button role="tab" aria-selected="false" data-view="grid">月カレンダー</button>
+  </div>
+
+  <section id="list"></section>
+  <section id="grid" hidden>
+    <div class="mhead">
+      <button id="prev" aria-label="前の月">‹</button>
+      <h2 id="mtitle"></h2>
+      <button id="next" aria-label="次の月">›</button>
+    </div>
+    <div class="grid" id="gridbody"></div>
+  </section>
+
+  <footer>Zoom URLは当日朝にDiscordでお知らせします</footer>
+</div>
+
+<script>window.EVENTS=/*EVENTS*/[];window.BUILT_AT="/*BUILT_AT*/";</script>
+<script>
+const CATS = {
+  akky:  {label:"あっきー集団コンサル", short:"あっきー", color:"var(--akky)"},
+  annin: {label:"あんにん集団コンサル", short:"あんにん", color:"var(--annin)"},
+  misha: {label:"みしゃまる集団コンサル", short:"みしゃまる", color:"var(--misha)"},
+  sora:  {label:"そら集団コンサル", short:"そら", color:"var(--sora)"},
+  study: {label:"勉強会", short:"勉強会", color:"var(--study)"},
+  offkai:{label:"オフ会", short:"オフ会", color:"var(--offkai)"},
+};
+const WD = ["日","月","火","水","木","金","土"];
+const events = (window.EVENTS || []).map(e => ({...e, d: e.start.slice(0,10)}));
+const now = new Date(Date.now() + 9*3600e3); // JST
+const todayStr = now.toISOString().slice(0,10);
+
+// 今月以降に予定があるカテゴリだけ凡例に出す
+const used = Object.keys(CATS).filter(k => events.some(e => e.cat === k && e.d >= todayStr.slice(0,8) + "01"));
+let hidden = new Set();
+try { hidden = new Set(JSON.parse(localStorage.getItem("kmk-hidden") || "[]")); } catch(_) {}
+
+const legend = document.getElementById("legend");
+used.forEach(k => {
+  const b = document.createElement("button");
+  b.className = "chip"; b.dataset.cat = k;
+  b.setAttribute("aria-pressed", !hidden.has(k));
+  b.innerHTML = `<span class="dot" style="background:${CATS[k].color}"></span>${CATS[k].label}`;
+  b.onclick = () => {
+    hidden.has(k) ? hidden.delete(k) : hidden.add(k);
+    b.setAttribute("aria-pressed", !hidden.has(k));
+    try { localStorage.setItem("kmk-hidden", JSON.stringify([...hidden])); } catch(_) {}
+    render();
+  };
+  legend.appendChild(b);
+});
+
+const hm = s => s.length > 10 ? s.slice(11,16).replace(/^0/,"") : "";
+const timeRange = e => e.allDay ? "終日" : `${hm(e.start)}〜${hm(e.end)}`;
+const visible = () => events.filter(e => !hidden.has(e.cat));
+const titleOf = e => e.cat === "study" || e.cat === "offkai" ? e.title.replace(/^KUROMAKU/,"") : CATS[e.cat].label;
+
+function renderList(){
+  const el = document.getElementById("list");
+  const up = visible().filter(e => e.d >= todayStr);
+  if(!up.length){ el.innerHTML = '<p class="empty">いまのところ予定はありません</p>'; return; }
+  const byDay = {};
+  up.forEach(e => (byDay[e.d] ||= []).push(e));
+  let html = "", lastMonth = "";
+  Object.keys(byDay).sort().forEach(d => {
+    const dt = new Date(d+"T00:00:00");
+    const ym = `${dt.getMonth()+1}月`;
+    if(ym !== lastMonth){ if(lastMonth) html += "</div>"; html += `<div class="month-label">${ym}</div><div>`; lastMonth = ym; }
+    const w = dt.getDay();
+    html += `<div class="day"><div class="date ${w===0?"sun":w===6?"sat":""}">
+      <div class="md">${dt.getDate()}</div><div class="wd">${WD[w]}曜</div>${d===todayStr?'<span class="badge-today">今日</span>':""}</div><div>`;
+    byDay[d].forEach(e => {
+      html += `<div class="ev" style="--c:${CATS[e.cat].color}">
+        <span class="time">${timeRange(e)}</span>
+        <div><div class="name">${titleOf(e)}</div>${e.place?`<div class="place">${e.place}</div>`:""}</div></div>`;
+    });
+    html += "</div></div>";
+  });
+  el.innerHTML = html + "</div>";
+}
+
+let cur = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
+function renderGrid(){
+  const y = cur.getFullYear(), m = cur.getMonth();
+  document.getElementById("mtitle").textContent = `${y}年 ${m+1}月`;
+  const body = document.getElementById("gridbody");
+  let html = WD.map(w => `<div class="wh">${w}</div>`).join("");
+  const first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay());
+  const vis = visible();
+  for(let i = 0; i < 42; i++){
+    const d = new Date(start); d.setDate(start.getDate()+i);
+    if(i >= 35 && d.getMonth() !== m) break;
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const evs = vis.filter(e => e.d === ds);
+    html += `<div class="cell ${d.getMonth()!==m?"out":""} ${ds===todayStr?"today":""}"><div class="n">${d.getDate()}</div>` +
+      evs.map(e => `<div class="pill" title="${titleOf(e)} ${timeRange(e)}"><span class="dot" style="background:${CATS[e.cat].color}"></span>${e.allDay ? "" : hm(e.start).replace(":00","時")}<b>${CATS[e.cat].short}</b></div>`).join("") +
+      `</div>`;
+  }
+  body.innerHTML = html;
+}
+document.getElementById("prev").onclick = () => { cur.setMonth(cur.getMonth()-1); renderGrid(); };
+document.getElementById("next").onclick = () => { cur.setMonth(cur.getMonth()+1); renderGrid(); };
+
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x === b));
+  document.getElementById("list").hidden = b.dataset.view !== "list";
+  document.getElementById("grid").hidden = b.dataset.view !== "grid";
+});
+
+function render(){ renderList(); renderGrid(); }
+document.getElementById("updated").textContent = window.BUILT_AT && !window.BUILT_AT.startsWith("/*") ? `${window.BUILT_AT} 更新` : "";
+render();
+</script>
+</body>
+</html>
