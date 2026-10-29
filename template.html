@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
 <title>KUROMAKU イベントカレンダー</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&family=Shippori+Mincho:wght@600&display=swap" rel="stylesheet">
@@ -11,16 +12,7 @@
   --bg:#f6f4ee; --card:#fffefa; --ink:#1d2140; --sub:#6b6f85; --line:#e4e1d6; --today:#1d2140;
   --akky:#ff914d; --annin:#f27a96; --misha:#e0344f; --sora:#8c52ff; --offkai:#3b3f5c; --study:#1f9e8f;
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#15172a; --card:#1e2138; --ink:#eceaf5; --sub:#a3a6bf; --line:#2f3352; --today:#eceaf5;
-    --offkai:#b9bcd8; --study:#3cc4b3;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#15172a; --card:#1e2138; --ink:#eceaf5; --sub:#a3a6bf; --line:#2f3352; --today:#eceaf5;
-  --offkai:#b9bcd8; --study:#3cc4b3;
-}
+:root{color-scheme:light}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Zen Maru Gothic",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 .wrap{max-width:920px;margin:0 auto;padding:24px 16px 48px}
