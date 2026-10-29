@@ -50,7 +50,9 @@ h1{margin:4px 0 0;white-space:nowrap;font-size:26px;font-weight:700;letter-spaci
 
 /* grid */
 .mhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.mhead h2{font-family:"Shippori Mincho",serif;font-size:24px;margin:0}
+.mhead h2{font-family:"Shippori Mincho",serif;font-size:22px;margin:0;text-align:center}
+.mhead button:disabled{opacity:.3;cursor:default}
+footer #until{display:block;margin-bottom:4px}
 .mhead button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;width:36px;height:36px;font-size:16px;cursor:pointer}
 .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
 .grid .wh{font-size:11px;text-align:center;padding:8px 0;color:var(--sub);border-bottom:1px solid var(--line)}
@@ -59,7 +61,7 @@ h1{margin:4px 0 0;white-space:nowrap;font-size:26px;font-weight:700;letter-spaci
 .cell:nth-child(7n){border-right:0}
 .cell.out{background:transparent;opacity:.35}
 .cell .n{font-size:12px;font-weight:700;margin-bottom:4px}
-.cell.today .n{display:inline-block;background:var(--today);color:var(--bg);border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px}
+.cell.today .n{display:inline-block;background:var(--today);color:var(--bg);border-radius:11px;min-width:22px;height:22px;padding:0 5px;text-align:center;line-height:22px}
 .pill{display:flex;align-items:center;gap:3px;font-size:11px;line-height:1.3;margin-bottom:3px;color:var(--ink);white-space:nowrap;overflow:hidden}
 .pill .dot{width:7px;height:7px}
 .pill b{font-weight:500;overflow:hidden;text-overflow:ellipsis}
@@ -97,23 +99,23 @@ footer{margin-top:28px;font-size:12px;color:var(--sub);text-align:center}
 
   <div class="tabs" role="tablist">
     <button role="tab" aria-selected="true" data-view="list">これからの予定</button>
-    <button role="tab" aria-selected="false" data-view="grid">月カレンダー</button>
+    <button role="tab" aria-selected="false" data-view="grid">タームカレンダー</button>
   </div>
 
   <section id="list"></section>
   <section id="grid" hidden>
     <div class="mhead">
-      <button id="prev" aria-label="前の月">‹</button>
+      <button id="prev" aria-label="前のターム">‹</button>
       <h2 id="mtitle"></h2>
-      <button id="next" aria-label="次の月">›</button>
+      <button id="next" aria-label="次のターム">›</button>
     </div>
     <div class="grid" id="gridbody"></div>
   </section>
 
-  <footer>Zoom URLは当日朝にDiscordでお知らせします</footer>
+  <footer><span id="until"></span>Zoom URLは当日朝にDiscordでお知らせします</footer>
 </div>
 
-<script>window.EVENTS=/*EVENTS*/[];window.BUILT_AT="/*BUILT_AT*/";</script>
+<script>window.EVENTS=/*EVENTS*/[];window.BUILT_AT="/*BUILT_AT*/";window.VISIBLE_UNTIL="/*VISIBLE_UNTIL*/";window.TODAY="/*TODAY*/";</script>
 <script>
 const CATS = {
   akky:  {label:"あっきー集団コンサル", short:"あっきー", color:"var(--akky)"},
@@ -126,7 +128,8 @@ const CATS = {
 const WD = ["日","月","火","水","木","金","土"];
 const events = (window.EVENTS || []).map(e => ({...e, d: e.start.slice(0,10)}));
 const now = new Date(Date.now() + 9*3600e3); // JST
-const todayStr = now.toISOString().slice(0,10);
+const todayStr = /^\d{4}-/.test(window.TODAY) ? window.TODAY : now.toISOString().slice(0,10);
+const until = /^\d{4}-/.test(window.VISIBLE_UNTIL) ? window.VISIBLE_UNTIL : "9999-12-31";
 
 // 今月以降に予定があるカテゴリだけ凡例に出す
 const used = Object.keys(CATS).filter(k => events.some(e => e.cat === k && e.d >= todayStr.slice(0,8) + "01"));
@@ -177,20 +180,30 @@ function renderList(){
   el.innerHTML = html + "</div>";
 }
 
-let cur = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
+// ターム = 20日〜翌月19日。cur はタームの開始日(20日)
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const md = d => `${d.getMonth()+1}/${d.getDate()}`;
+const termStart = s => { const d = new Date(s+"T00:00:00"); return d.getDate() >= 20 ? new Date(d.getFullYear(), d.getMonth(), 20) : new Date(d.getFullYear(), d.getMonth()-1, 20); };
+const termEnd = t => new Date(t.getFullYear(), t.getMonth()+1, 19);
+const shiftTerm = (t, n) => new Date(t.getFullYear(), t.getMonth()+n, 20);
+// 最初に出すのは告知済みの一番新しいターム
+let cur = termStart(until !== "9999-12-31" ? until : todayStr);
+
 function renderGrid(){
-  const y = cur.getFullYear(), m = cur.getMonth();
-  document.getElementById("mtitle").textContent = `${y}年 ${m+1}月`;
+  const tEnd = termEnd(cur);
+  document.getElementById("mtitle").textContent = `${md(cur)}〜${md(tEnd)}`;
+  document.getElementById("prev").disabled = ymd(termEnd(shiftTerm(cur,-1))) < (events[0]?.d || todayStr);
+  document.getElementById("next").disabled = ymd(shiftTerm(cur,1)) > until;
   const body = document.getElementById("gridbody");
   let html = WD.map(w => `<div class="wh">${w}</div>`).join("");
-  const first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay());
+  const start = new Date(cur); start.setDate(cur.getDate() - cur.getDay());
+  const last = new Date(tEnd); last.setDate(tEnd.getDate() + (6 - tEnd.getDay()));
   const vis = visible();
-  for(let i = 0; i < 42; i++){
-    const d = new Date(start); d.setDate(start.getDate()+i);
-    if(i >= 35 && d.getMonth() !== m) break;
-    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-    const evs = vis.filter(e => e.d === ds);
-    html += `<div class="cell ${d.getMonth()!==m?"out":""} ${ds===todayStr?"today":""}"><div class="n">${d.getDate()}</div>` +
+  for(let d = new Date(start); d <= last; d.setDate(d.getDate()+1)){
+    const ds = ymd(d), inTerm = d >= cur && d <= tEnd;
+    const evs = inTerm ? vis.filter(e => e.d === ds) : [];
+    const label = inTerm && (d.getDate() === 1 || ds === ymd(cur)) ? `${d.getMonth()+1}/${d.getDate()}` : d.getDate();
+    html += `<div class="cell ${inTerm?"":"out"} ${ds===todayStr?"today":""}"><div class="n">${label}</div>` +
       evs.map(e => e.cat === "offkai"
         ? `<div class="pill full" title="${titleOf(e)} ${timeRange(e)}"><b>${titleOf(e).replace("@", "<wbr>@")}</b></div>`
         : `<div class="pill" title="${titleOf(e)} ${timeRange(e)}"><span class="dot" style="background:${CATS[e.cat].color}"></span>${e.allDay ? "" : hm(e.start).replace(":00","時")}<b>${CATS[e.cat].short}</b></div>`).join("") +
@@ -198,8 +211,8 @@ function renderGrid(){
   }
   body.innerHTML = html;
 }
-document.getElementById("prev").onclick = () => { cur.setMonth(cur.getMonth()-1); renderGrid(); };
-document.getElementById("next").onclick = () => { cur.setMonth(cur.getMonth()+1); renderGrid(); };
+document.getElementById("prev").onclick = () => { cur = shiftTerm(cur,-1); renderGrid(); };
+document.getElementById("next").onclick = () => { cur = shiftTerm(cur,1); renderGrid(); };
 
 document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
   document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-selected", x === b));
@@ -208,6 +221,7 @@ document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
 });
 
 function render(){ renderList(); renderGrid(); }
+if(until !== "9999-12-31"){ const u = new Date(until+"T00:00:00"); document.getElementById("until").textContent = `${md(u)}までの予定を掲載中（次のタームは${u.getMonth()+1}/1に公開）`; }
 document.getElementById("updated").textContent = window.BUILT_AT && !window.BUILT_AT.startsWith("/*") ? `${window.BUILT_AT} 更新` : "";
 render();
 </script>

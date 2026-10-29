@@ -4,6 +4,8 @@ KUROMAKU イベントカレンダーのページを作るスクリプト
 - いつものカレンダー(kuromaku.contact@gmail.com)からは「◯◯集団コンサル」だけを拾う
 - 「KUROMAKUイベント（公開用）」カレンダーからは、入っている予定をすべて拾う
   （タイトルに「オフ会」が入っていればオフ会、それ以外は勉強会として表示）
+- タームは毎月20日〜翌月19日。毎月1日に次のタームを告知するので、
+  ページに出すのは「来月19日まで」（1日になった時点で次のタームが出る）
 
 使い方: python3 build.py   → _site/index.html ができる
 環境変数 GOOGLE_SERVICE_ACCOUNT_JSON にサービスアカウントの鍵ファイルのパスを入れておく
@@ -56,6 +58,12 @@ def to_item(e, cat):
     return item
 
 
+def visible_until(today):
+    """毎月1日に次のターム(今月20日〜来月19日)を公開 → 来月19日までを出す"""
+    y, m = (today.year + 1, 1) if today.month == 12 else (today.year, today.month + 1)
+    return datetime.date(y, m, 19)
+
+
 def main():
     creds = Credentials.from_service_account_file(
         os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "service-account.json"),
@@ -63,9 +71,9 @@ def main():
     )
     creds.refresh(google.auth.transport.requests.Request())
 
-    today = datetime.datetime.now(JST).date()
+    today = datetime.date.fromisoformat(os.environ["TODAY"]) if os.environ.get("TODAY") else datetime.datetime.now(JST).date()
     time_min = f"{today.replace(day=1) - datetime.timedelta(days=31):%Y-%m-01}T00:00:00+09:00"
-    time_max = f"{today + datetime.timedelta(days=200):%Y-%m-%d}T23:59:59+09:00"
+    time_max = f"{visible_until(today):%Y-%m-%d}T23:59:59+09:00"
 
     items = []
     for e in fetch(creds.token, MAIN_CAL, time_min, time_max):
@@ -78,11 +86,15 @@ def main():
                 items.append(to_item(e, cat))
     for e in fetch(creds.token, EVENT_CAL, time_min, time_max):
         items.append(to_item(e, "offkai" if "オフ会" in e.get("summary", "") else "study"))
+    until = visible_until(today)
+    items = [i for i in items if i["start"][:10] <= until.isoformat()]
     items.sort(key=lambda i: i["start"])
 
     data = json.dumps(items, ensure_ascii=False).replace("<", "\\u003c")
     page = (HERE / "template.html").read_text(encoding="utf-8")
     page = page.replace("/*EVENTS*/[]", data).replace("/*BUILT_AT*/", f"{datetime.datetime.now(JST):%-m/%-d %H:%M}")
+    page = page.replace("/*VISIBLE_UNTIL*/", until.isoformat())
+    page = page.replace("/*TODAY*/", os.environ.get("TODAY", ""))
     out = HERE / "_site"
     out.mkdir(exist_ok=True)
     (out / "index.html").write_text(page, encoding="utf-8")
