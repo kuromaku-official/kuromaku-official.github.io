@@ -2,7 +2,7 @@ name: Build event calendar
 
 on:
   schedule:
-    - cron: "5 * * * *"   # 毎時5分にカレンダーを読み直す
+    - cron: "5 15 * * *"   # 毎日 JST 0:05 にカレンダーを読み直す（毎月1日はここで次のタームが出る）
   push:
     branches: [main]
   workflow_dispatch: {}
